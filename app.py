@@ -10,63 +10,6 @@ from psycopg2.extras import RealDictCursor
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-def init_db():
-    """Создаёт таблицы, если их нет"""
-    conn = get_db_connection()
-    if not conn:
-        print("❌ Не удалось подключиться к БД для инициализации")
-        return
-    cur = conn.cursor()
-    
-    # Таблица пользователей
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            password_hash VARCHAR(200) NOT NULL,
-            family_id INTEGER,
-            role_label VARCHAR(100),
-            is_creator BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Таблица семей
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS families (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            invite_code VARCHAR(10) UNIQUE NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Таблица транзакций
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS transactions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id),
-            family_id INTEGER NOT NULL REFERENCES families(id),
-            title VARCHAR(200) NOT NULL,
-            amount DECIMAL(10,2) NOT NULL,
-            type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
-            category VARCHAR(50),
-            date DATE NOT NULL,
-            is_hidden BOOLEAN DEFAULT FALSE,
-            masked BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("✅ Таблицы созданы/проверены")
-
-# Вызовите функцию ПЕРЕД запуском сервера
-init_db()
-
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, supports_credentials=True)
 
@@ -74,32 +17,23 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'familybudget_secret_202
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Получаем строку подключения из переменной окружения (Render сам подставит)
-DATABASE_URL = os.environ.get('DATABASE_URL')
-
-if not DATABASE_URL:
-    print("⚠️  ВНИМАНИЕ: Переменная окружения DATABASE_URL не установлена!")
-    print("⚠️  Использую локальную БД (только для разработки)")
-    DATABASE_URL = 'postgresql://postgres:Mirea23@localhost:5432/familybudget'
-
+# ---------- БАЗА ДАННЫХ ----------
 def get_db_connection():
-    """Подключение к PostgreSQL с поддержкой SSL (нужно для Render)"""
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        print("❌ DATABASE_URL не установлена")
+        return None
     try:
-        # Для Render обязательно нужен sslmode=require
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor, sslmode='require')
-        return conn
-    except psycopg2.OperationalError as e:
-        # Если не получилось с sslmode, пробуем без него (для локальной разработки)
-        print(f"Ошибка подключения с sslmode=require: {e}")
-        print("Пробую подключиться без sslmode...")
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-        return conn
+        return psycopg2.connect(database_url, cursor_factory=RealDictCursor, sslmode='require')
+    except Exception:
+        return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
 
 def init_db():
-    """Создание таблиц, если их нет"""
     conn = get_db_connection()
+    if not conn:
+        print("❌ Не удалось подключиться к БД")
+        return
     cur = conn.cursor()
-    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -112,7 +46,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS families (
             id SERIAL PRIMARY KEY,
@@ -121,7 +54,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
@@ -137,15 +69,12 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Индексы для ускорения запросов
     cur.execute('CREATE INDEX IF NOT EXISTS idx_transactions_family_date ON transactions(family_id, date)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id)')
-    
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ База данных инициализирована (таблицы созданы)")
+    print("✅ База данных инициализирована")
 
 def generate_invite_code():
     import random
@@ -167,17 +96,19 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ------------------- ОТДАЧА HTML -------------------
+# ---------- ОТДАЧА HTML ----------
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
-# ------------------- API -------------------
+# ---------- АВТОРИЗАЦИЯ ----------
 @app.route('/api/me', methods=['GET'])
 def me():
     if 'user_id' not in session:
         return jsonify({'error': 'not logged in'}), 401
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('''
         SELECT u.id, u.name, u.email, u.family_id, u.role_label, u.is_creator,
@@ -216,6 +147,8 @@ def register():
     if len(password) < 6:
         return jsonify({'error': 'Пароль должен быть минимум 6 символов'}), 400
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     try:
         cur.execute('INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id, name, email',
@@ -237,6 +170,8 @@ def login():
     email = data.get('email', '').strip()
     password = data.get('password', '')
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT id, name, email, password_hash, family_id, role_label, is_creator FROM users WHERE email = %s', (email,))
     user = cur.fetchone()
@@ -252,6 +187,7 @@ def logout():
     session.clear()
     return jsonify({'ok': True})
 
+# ---------- СЕМЬЯ ----------
 @app.route('/api/family/create', methods=['POST'])
 @login_required
 def create_family():
@@ -262,6 +198,8 @@ def create_family():
         return jsonify({'error': 'Название семьи обязательно'}), 400
     invite_code = generate_invite_code()
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     try:
         cur.execute('INSERT INTO families (name, invite_code) VALUES (%s, %s) RETURNING id, name, invite_code',
@@ -285,12 +223,14 @@ def join_family():
     code = data.get('code', '').strip().upper()
     role_label = data.get('role_label', '')
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT id, name FROM families WHERE invite_code = %s', (code,))
     family = cur.fetchone()
     if not family:
         return jsonify({'error': 'Неверный код приглашения'}), 400
-    cur.execute('UPDATE users SET family_id = %s, is_creator = FALSE, role_label = %s WHERE id = %s RETURNING id',
+    cur.execute('UPDATE users SET family_id = %s, is_creator = FALSE, role_label = %s WHERE id = %s',
                 (family['id'], role_label, session['user_id']))
     conn.commit()
     cur.close()
@@ -301,11 +241,13 @@ def join_family():
 @login_required
 def leave_family():
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT is_creator FROM users WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
     if user and user['is_creator']:
-        return jsonify({'error': 'Создатель не может покинуть семью. Сначала передайте права.'}), 400
+        return jsonify({'error': 'Создатель не может покинуть семью'}), 400
     cur.execute('UPDATE users SET family_id = NULL, role_label = NULL WHERE id = %s', (session['user_id'],))
     conn.commit()
     cur.close()
@@ -316,6 +258,8 @@ def leave_family():
 @login_required
 def get_members():
     conn = get_db_connection()
+    if not conn:
+        return jsonify([])
     cur = conn.cursor()
     cur.execute('SELECT family_id FROM users WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
@@ -343,6 +287,8 @@ def update_role(user_id):
     data = request.json
     role_label = data.get('role_label', '')
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT is_creator, family_id FROM users WHERE id = %s', (session['user_id'],))
     current = cur.fetchone()
@@ -359,6 +305,8 @@ def update_role(user_id):
 @login_required
 def remove_member(user_id):
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT is_creator, family_id FROM users WHERE id = %s', (session['user_id'],))
     current = cur.fetchone()
@@ -371,10 +319,13 @@ def remove_member(user_id):
     conn.close()
     return jsonify({'ok': True})
 
+# ---------- ТРАНЗАКЦИИ ----------
 @app.route('/api/transactions', methods=['GET'])
 @login_required
 def get_transactions():
     conn = get_db_connection()
+    if not conn:
+        return jsonify([])
     cur = conn.cursor()
     cur.execute('SELECT family_id FROM users WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
@@ -452,6 +403,8 @@ def add_transaction():
         return jsonify({'error': 'Заполните все поля'}), 400
     amount = float(amount)
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT family_id, is_creator FROM users WHERE id = %s', (session['user_id'],))
     current = cur.fetchone()
@@ -477,6 +430,8 @@ def add_transaction():
 @login_required
 def delete_transaction(tx_id):
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('''
         SELECT t.id, t.user_id, u.family_id, u.is_creator
@@ -499,10 +454,13 @@ def delete_transaction(tx_id):
     conn.close()
     return jsonify({'ok': True})
 
+# ---------- ОТЧЁТЫ ----------
 @app.route('/api/report', methods=['GET'])
 @login_required
 def get_report():
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
     cur.execute('SELECT family_id FROM users WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
@@ -558,38 +516,31 @@ def get_report():
         'members': members_list
     })
 
-# ------------------- ЭКСПОРТ В EXCEL (ТОЛЬКО ДЛЯ СОЗДАТЕЛЯ) -------------------
+# ---------- ЭКСПОРТ EXCEL (только для создателя) ----------
 @app.route('/api/report/excel', methods=['GET'])
 @login_required
 def get_report_excel():
     conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'DB error'}), 500
     cur = conn.cursor()
-    
     cur.execute('SELECT family_id, is_creator, name FROM users WHERE id = %s', (session['user_id'],))
     user = cur.fetchone()
-    
     if not user or not user['family_id']:
         cur.close()
         conn.close()
         return jsonify({'error': 'Вы не состоите в семье'}), 400
-    
     if not user['is_creator']:
         cur.close()
         conn.close()
-        return jsonify({'error': 'Только создатель семьи может скачать отчёт в Excel'}), 403
-    
+        return jsonify({'error': 'Только создатель может скачать отчёт в Excel'}), 403
     family_id = user['family_id']
     current_user_name = user['name']
-    
     from_date = request.args.get('from')
     to_date = request.args.get('to')
     member_id = request.args.get('member_id')
-    
     if not from_date or not to_date:
-        cur.close()
-        conn.close()
         return jsonify({'error': 'Не указан период'}), 400
-    
     tx_query = '''
         SELECT t.amount, t.type, t.category, t.date, t.title,
                u.name as user_name, u.role_label, t.is_hidden
@@ -602,43 +553,27 @@ def get_report_excel():
         tx_query += ' AND t.user_id = %s'
         params.append(member_id)
     tx_query += ' ORDER BY t.date DESC'
-    
     cur.execute(tx_query, params)
     transactions = cur.fetchall()
-    
     cur.execute('SELECT name FROM families WHERE id = %s', (family_id,))
     family = cur.fetchone()
-    
     cur.execute('SELECT name, role_label FROM users WHERE family_id = %s', (family_id,))
     members = cur.fetchall()
-    
     cur.close()
     conn.close()
-    
     wb = Workbook()
-    
     ws1 = wb.active
     ws1.title = "Транзакции"
-    
     headers = ['Дата', 'Участник', 'Роль', 'Тип', 'Категория', 'Название', 'Сумма, ₽', 'Примечание']
     ws1.append(headers)
-    
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="2d5a27", end_color="2d5a27", fill_type="solid")
-    header_alignment = Alignment(horizontal="center")
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                         top=Side(style='thin'), bottom=Side(style='thin'))
-    
     for col in range(1, len(headers) + 1):
         cell = ws1.cell(row=1, column=col)
         cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-    
     income_total = 0.0
     expense_total = 0.0
-    
     for tx in transactions:
         amount = float(tx['amount'])
         if tx['type'] == 'income':
@@ -647,131 +582,63 @@ def get_report_excel():
         else:
             expense_total += amount
             amount_str = f"- {amount:,.2f}"
-        
         is_masked = tx['is_hidden'] and tx['user_name'] != current_user_name
         note = "🔒 Скрытая трата" if is_masked else ""
-        
         ws1.append([
-            str(tx['date']),
-            tx['user_name'],
-            tx['role_label'] or 'Участник',
-            'Доход' if tx['type'] == 'income' else 'Расход',
-            tx['category'],
-            tx['title'] if not is_masked else "Личная трата",
-            amount_str,
-            note
+            str(tx['date']), tx['user_name'], tx['role_label'] or 'Участник',
+            'Доход' if tx['type'] == 'income' else 'Расход', tx['category'],
+            tx['title'] if not is_masked else "Личная трата", amount_str, note
         ])
-    
     ws1.append([])
     ws1.append(['', '', '', '', '', 'ИТОГО ДОХОДЫ:', f"+ {income_total:,.2f}", ''])
     ws1.append(['', '', '', '', '', 'ИТОГО РАСХОДЫ:', f"- {expense_total:,.2f}", ''])
     ws1.append(['', '', '', '', '', 'ОСТАТОК:', f"{income_total - expense_total:,.2f}", ''])
-    
     ws2 = wb.create_sheet("По категориям")
-    
-    cat_query = '''
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
         SELECT category, SUM(amount) as total
         FROM transactions
         WHERE family_id = %s AND date >= %s AND date <= %s AND type = 'expense'
-        GROUP BY category
-        ORDER BY total DESC
-    '''
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(cat_query, [family_id, from_date, to_date])
+        GROUP BY category ORDER BY total DESC
+    ''', [family_id, from_date, to_date])
     cats = cur.fetchall()
     cur.close()
     conn.close()
-    
     ws2.append(['Категория', 'Сумма расходов, ₽', 'Доля от всех расходов, %'])
-    
-    for col in range(1, 4):
-        cell = ws2.cell(row=1, column=col)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-    
     for cat in cats:
         total = float(cat['total']) if cat['total'] else 0
         percent = round(total / expense_total * 100, 1) if expense_total > 0 else 0
         ws2.append([cat['category'], f"{total:,.2f}", f"{percent}%"])
-    
     ws3 = wb.create_sheet("По участникам")
-    
-    member_query = '''
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
         SELECT u.name, u.role_label,
                SUM(CASE WHEN t.type = 'income' AND (t.is_hidden = FALSE OR t.user_id = u.id) THEN t.amount ELSE 0 END) as income,
                SUM(CASE WHEN t.type = 'expense' AND (t.is_hidden = FALSE OR t.user_id = u.id) THEN t.amount ELSE 0 END) as expense
         FROM users u
         LEFT JOIN transactions t ON u.id = t.user_id AND t.family_id = %s AND t.date >= %s AND t.date <= %s
         WHERE u.family_id = %s
-        GROUP BY u.id, u.name, u.role_label
-        ORDER BY expense DESC
-    '''
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(member_query, [family_id, from_date, to_date, family_id])
+        GROUP BY u.id, u.name, u.role_label ORDER BY expense DESC
+    ''', [family_id, from_date, to_date, family_id])
     members_stats = cur.fetchall()
     cur.close()
     conn.close()
-    
     ws3.append(['Участник', 'Роль', 'Доходы, ₽', 'Расходы, ₽', 'Чистый результат, ₽'])
-    
-    for col in range(1, 6):
-        cell = ws3.cell(row=1, column=col)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_alignment
-        cell.border = thin_border
-    
     for m in members_stats:
         income = float(m['income']) if m['income'] else 0
         expense = float(m['expense']) if m['expense'] else 0
-        balance = income - expense
-        ws3.append([
-            m['name'],
-            m['role_label'] or 'Участник',
-            f"{income:,.2f}",
-            f"{expense:,.2f}",
-            f"{balance:,.2f}"
-        ])
-    
-    for sheet in [ws1, ws2, ws3]:
-        for column in sheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 30)
-            sheet.column_dimensions[column_letter].width = adjusted_width
-    
+        ws3.append([m['name'], m['role_label'] or 'Участник', f"{income:,.2f}", f"{expense:,.2f}", f"{income - expense:,.2f}"])
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-    
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'budget_report_{from_date}_to_{to_date}.xlsx'
-    )
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=f'budget_report_{from_date}_to_{to_date}.xlsx')
 
+# ---------- ЗАПУСК ----------
 init_db()
 
-# ------------------- ЗАПУСК -------------------
 if __name__ == '__main__':
-    # Сначала инициализируем базу данных
-    init_db()
-    
-    # Затем запускаем сервер
     port = int(os.environ.get('PORT', 5000))
-    print("✅ База данных инициализирована")
-    print(f"🌐 Сервер запущен: http://localhost:{port}")
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
