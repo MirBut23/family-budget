@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: family-budget
+    runtime: python
+    repo: https://github.com/MirBut23/family-budget.git
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: family-budget-db
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.12.4
+
+databases:
+  - name: family-budget-db
+    plan: free

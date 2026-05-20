@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>БюджетСемьи</title>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --border: #e2ddd6;
+  --border2: #ccc8c0;
+  --text: #1a1814;
+  --text2: #6b6760;
+  --text3: #9e9b96;
+  --accent: #2d5a27;
+  --accent-bg: #eaf3e8;
+  --accent-light: #c8e6c4;
+  --red: #c0392b;
+  --red-bg: #fdf0ef;
+  --amber: #a0620a;
+  --amber-bg: #fef6ea;
+  --purple: #4a3d8f;
+  --purple-bg: #f0eeff;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,.07);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Onest', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select, textarea { font-family: inherit; font-size: 14px; }
+a { color: inherit; text-decoration: none; }
+
+/* Auth screens */
+#auth-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 20px;
+}
+.auth-card {
+  width: 100%; max-width: 400px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 36px 32px;
+}
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.auth-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.auth-logo-icon svg { width: 20px; height: 20px; fill: #fff; }
+.auth-logo-text { font-size: 18px; font-weight: 600; color: var(--text); }
+.auth-tabs { display: flex; gap: 0; margin-bottom: 24px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.auth-tab { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; color: var(--text2); transition: .15s; }
+.auth-tab.active { background: var(--text); color: #fff; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+.form-input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--surface);
+  color: var(--text); outline: none; transition: border .15s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text3); }
+.btn-primary {
+  width: 100%; padding: 11px; background: var(--text); color: #fff;
+  border-radius: var(--radius); font-size: 14px; font-weight: 500;
+  transition: opacity .15s; margin-top: 4px;
+}
+.btn-primary:hover { opacity: .85; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.auth-error { background: var(--red-bg); color: var(--red); border: 1px solid #f5c6c2; border-radius: var(--radius); padding: 10px 12px; font-size: 13px; margin-bottom: 14px; display: none; }
+
+/* Setup screen */
+#setup-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 20px;
+}
+.setup-card {
+  width: 100%; max-width: 480px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 32px;
+}
+.setup-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.setup-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.setup-option-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.setup-tab { flex: 1; padding: 10px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); transition: .15s; }
+.setup-tab.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.setup-panel { display: none; }
+.setup-panel.active { display: block; }
+.role-input-group { display: flex; gap: 10px; align-items: flex-start; }
+.role-select { flex: 1; }
+.role-custom-input { flex: 2; }
+
+/* App layout */
+#app-screen { display: none; min-height: 100vh; }
+.layout { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 220px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-top { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+.sidebar-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.sidebar-logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.sidebar-logo-icon svg { width: 16px; height: 16px; fill: #fff; }
+.sidebar-logo-text { font-size: 15px; font-weight: 600; }
+.sidebar-family { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.sidebar-nav { padding: 10px 8px; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px;
+  border-radius: var(--radius); font-size: 13px; font-weight: 500; color: var(--text2);
+  cursor: pointer; transition: .12s; margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-bg); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+.user-chip { display: flex; align-items: center; gap: 8px; }
+.user-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.user-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.user-role { font-size: 11px; color: var(--text2); }
+.logout-btn { margin-left: auto; padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; color: var(--text2); }
+.logout-btn:hover { background: var(--surface2); }
+
+/* Main content */
+.main-content { flex: 1; min-width: 0; padding: 28px 32px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 24px; }
+.page-title { font-size: 22px; font-weight: 600; }
+.page-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+.stat-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 6px; }
+.stat-value { font-size: 24px; font-weight: 600; }
+.stat-value.income { color: var(--accent); }
+.stat-value.expense { color: var(--red); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+.card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 13px; font-weight: 600; }
+.btn-sm { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; color: var(--text2); transition: .12s; }
+.btn-sm:hover { background: var(--surface2); color: var(--text); }
+.btn-accent-sm { padding: 6px 12px; font-size: 12px; font-weight: 500; background: var(--text); color: #fff; border-radius: 7px; transition: opacity .12s; }
+.btn-accent-sm:hover { opacity: .8; }
+.btn-danger-sm { padding: 6px 12px; font-size: 12px; font-weight: 500; background: var(--red-bg); color: var(--red); border: 1px solid #f5c6c2; border-radius: 7px; }
+
+/* Transaction list */
+.tx-row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border); transition: background .1s; }
+.tx-row:last-child { border-bottom: none; }
+.tx-row:hover { background: var(--bg); }
+.tx-ico { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-meta { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.tx-amount { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.tx-amount.pos { color: var(--accent); }
+.tx-amount.masked { color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+.tx-del { padding: 4px 6px; color: var(--text3); border-radius: 5px; opacity: 0; transition: .12s; }
+.tx-row:hover .tx-del { opacity: 1; }
+.tx-del:hover { background: var(--red-bg); color: var(--red); }
+.tx-del svg { width: 14px; height: 14px; }
+
+.badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+.badge-role { background: var(--purple-bg); color: var(--purple); }
+.badge-hidden { background: var(--surface2); color: var(--text2); }
+.badge-creator { background: var(--accent-bg); color: var(--accent); }
+
+/* Form */
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.form-row-1 { margin-bottom: 14px; }
+.toggle-row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; margin-bottom: 14px; user-select: none;
+}
+.toggle-track { width: 34px; height: 19px; border-radius: 10px; background: var(--border2); position: relative; transition: background .2s; flex-shrink: 0; }
+.toggle-track.on { background: var(--accent); }
+.toggle-thumb { width: 15px; height: 15px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: left .2s; }
+.toggle-track.on .toggle-thumb { left: 17px; }
+.toggle-label { font-size: 13px; font-weight: 500; }
+.toggle-sub { font-size: 11px; color: var(--text2); margin-left: auto; }
+.hint-box { background: var(--purple-bg); border: 1px solid #c5bef7; border-radius: var(--radius); padding: 10px 12px; font-size: 12px; color: var(--purple); margin-bottom: 14px; display: none; }
+.hint-box.show { display: block; }
+
+/* Member chips */
+.member-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.mchip {
+  padding: 7px 13px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border); border-radius: 20px; color: var(--text2);
+  background: var(--surface); cursor: pointer; transition: .12s;
+}
+.mchip.sel { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+
+/* Members page */
+.members-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+.member-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+.member-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.member-av { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.member-name { font-size: 13px; font-weight: 600; }
+.member-role-edit { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.role-select { font-size: 11px; border: 1px solid var(--border); border-radius: 6px; padding: 3px 7px; background: var(--surface2); color: var(--text); }
+.member-stats { display: flex; gap: 16px; }
+.mstat { font-size: 11px; color: var(--text2); }
+.mstat strong { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 1px; }
+.mstat strong.pos { color: var(--accent); }
+.member-actions { margin-top: 10px; display: flex; gap: 6px; justify-content: flex-end; }
+
+.invite-box {
+  background: var(--surface2); border: 1px dashed var(--border2);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+}
+.invite-code { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 500; letter-spacing: 5px; color: var(--text); }
+.invite-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.copy-btn { margin-left: auto; padding: 7px 14px; font-size: 12px; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surface); color: var(--text2); white-space: nowrap; }
+.copy-btn:hover { background: var(--surface); color: var(--text); border-color: var(--text); }
+
+/* Report */
+.period-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.ptab { padding: 8px 16px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); transition: .12s; }
+.ptab.active { background: var(--text); color: #fff; border-color: var(--text); }
+.cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cat-name { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.cat-bar { height: 100%; border-radius: 3px; background: var(--accent); transition: width .4s; }
+.cat-val { font-size: 12px; font-weight: 500; width: 80px; text-align: right; color: var(--text); flex-shrink: 0; }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+.empty-icon { font-size: 32px; margin-bottom: 8px; }
+.empty-text { font-size: 14px; }
+
+/* Filter bar */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-chip { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); border-radius: 20px; color: var(--text2); cursor: pointer; }
+.filter-chip.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+  background: var(--text); color: #fff; padding: 10px 18px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500; opacity: 0; transition: .3s; z-index: 999; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.error { background: var(--red); }
+
+/* Loader */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -3px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Category icons */
+.cat-food { background: #fef3e2; }
+.cat-home { background: #e8f4fd; }
+.cat-car { background: #fce8e6; }
+.cat-salary { background: #eaf3e8; }
+.cat-fun { background: #f3eefe; }
+.cat-health { background: #fde8f0; }
+.cat-clothes { background: #e8fef6; }
+.cat-other { background: #f0ede8; }
+
+/* Divider */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* Section header */
+.section-hdr { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main-content { padding: 16px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .members-grid { grid-template-columns: 1fr; }
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      </div>
+      <div class="auth-logo-text">БюджетСемьи</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuth('login')">Войти</button>
+      <button class="auth-tab" onclick="switchAuth('register')">Регистрация</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="l-email" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <input class="form-input" id="l-pass" type="password" placeholder="••••••">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Войти</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Имя</label>
+        <input class="form-input" id="r-name" type="text" placeholder="Алексей">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="r-email" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <input class="form-input" id="r-pass" type="password" placeholder="минимум 6 символов">
+      </div>
+      <button class="btn-primary" onclick="doRegister()">Создать аккаунт</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP (no family) -->
+<div id="setup-screen" style="display:none">
+  <div class="setup-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <div class="auth-logo-icon" style="width:28px;height:28px;border-radius:6px">
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      </div>
+      <div style="font-size:15px;font-weight:600">БюджетСемьи</div>
+    </div>
+    <div class="setup-title">Добро пожаловать, <span id="setup-name"></span>!</div>
+    <div class="setup-sub">Создайте семью или присоединитесь к существующей по коду.</div>
+    <div class="setup-option-tabs">
+      <button class="setup-tab active" onclick="switchSetup('create')">Создать семью</button>
+      <button class="setup-tab" onclick="switchSetup('join')">Присоединиться</button>
+    </div>
+    <div id="setup-error" class="auth-error"></div>
+    <div id="panel-create" class="setup-panel active">
+      <div class="form-group">
+        <label class="form-label">Название семьи</label>
+        <input class="form-input" id="fam-name" type="text" placeholder="Семья Ивановых">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ваша роль в семье</label>
+        <div class="role-input-group">
+          <select class="form-input role-select" id="fam-role-create">
+            <option value="">— выберите роль —</option>
+            <option>Муж</option><option>Жена</option><option>Отец</option><option>Мать</option>
+            <option>Сын</option><option>Дочь</option><option>Дедушка</option><option>Бабушка</option>
+            <option>Наблюдатель</option>
+            <option value="__custom__">✏️ Своя роль...</option>
+          </select>
+          <input class="form-input role-custom-input" id="fam-role-create-custom" type="text" placeholder="Напишите свою роль" style="display:none">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="doCreateFamily()">Создать семью</button>
+    </div>
+    <div id="panel-join" class="setup-panel">
+      <div class="form-group">
+        <label class="form-label">Код приглашения</label>
+        <input class="form-input" id="join-code" type="text" placeholder="ABC-123" maxlength="7" style="font-family:'JetBrains Mono',monospace;letter-spacing:3px;font-size:16px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ваша роль в семье</label>
+        <div class="role-input-group">
+          <select class="form-input role-select" id="fam-role-join">
+            <option value="">— выберите роль —</option>
+            <option>Муж</option><option>Жена</option><option>Отец</option><option>Мать</option>
+            <option>Сын</option><option>Дочь</option><option>Дедушка</option><option>Бабушка</option>
+            <option>Наблюдатель</option>
+            <option value="__custom__">✏️ Своя роль...</option>
+          </select>
+          <input class="form-input role-custom-input" id="fam-role-join-custom" type="text" placeholder="Напишите свою роль" style="display:none">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="doJoinFamily()">Присоединиться</button>
+    </div>
+    <div class="divider"></div>
+    <button onclick="doLogout()" style="font-size:12px;color:var(--text2)">Выйти из аккаунта</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-logo">
+          <div class="sidebar-logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          </div>
+          <div class="sidebar-logo-text">БюджетСемьи</div>
+        </div>
+        <div class="sidebar-family" id="sb-family-name"></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="dashboard" onclick="goPage('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Дашборд
+        </div>
+        <div class="nav-item" data-page="add" onclick="goPage('add')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Добавить
+        </div>
+        <div class="nav-item" data-page="transactions" onclick="goPage('transactions')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Транзакции
+        </div>
+        <div class="nav-item" data-page="report" onclick="goPage('report')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Отчёт
+        </div>
+        <div class="nav-item" data-page="members" onclick="goPage('members')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Участники
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-av" id="sb-av" style="background:#eaf3e8;color:#2d5a27"></div>
+          <div>
+            <div class="user-name" id="sb-name"></div>
+            <div class="user-role" id="sb-role"></div>
+          </div>
+          <button class="logout-btn" onclick="doLogout()">Выйти</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div class="page-title">Обзор бюджета</div>
+          <div class="page-sub" id="dash-period"></div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Доходы</div><div class="stat-value income" id="d-income">₽0</div></div>
+          <div class="stat-card"><div class="stat-label">Расходы</div><div class="stat-value expense" id="d-expense">₽0</div></div>
+          <div class="stat-card"><div class="stat-label">Остаток</div><div class="stat-value" id="d-balance">₽0</div></div>
+        </div>
+        <div class="section-hdr">Последние операции</div>
+        <div class="card" id="dash-tx-list"></div>
+      </div>
+
+      <!-- ADD TRANSACTION -->
+      <div class="page" id="page-add">
+        <div class="page-header">
+          <div class="page-title">Добавить операцию</div>
+          <div class="page-sub">Новый доход или расход</div>
+        </div>
+        <div class="card" style="overflow:visible">
+          <div style="padding:20px">
+            <div id="member-selector-wrap" style="display:none;margin-bottom:16px">
+              <div class="form-label" style="margin-bottom:8px">От чьего имени</div>
+              <div class="member-chips" id="member-chips"></div>
+              <div class="divider"></div>
+            </div>
+            <div class="form-row-2">
+              <div>
+                <label class="form-label">Название</label>
+                <input class="form-input" id="tx-title" type="text" placeholder="Например: продукты">
+              </div>
+              <div>
+                <label class="form-label">Сумма, ₽</label>
+                <input class="form-input" id="tx-amount" type="number" min="0.01" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div>
+                <label class="form-label">Тип</label>
+                <select class="form-input" id="tx-type">
+                  <option value="expense">Расход</option>
+                  <option value="income">Доход</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Категория</label>
+                <select class="form-input" id="tx-category">
+                  <option>Питание</option>
+                  <option>ЖКХ</option>
+                  <option>Транспорт</option>
+                  <option>Развлечения</option>
+                  <option>Здоровье</option>
+                  <option>Одежда</option>
+                  <option>Образование</option>
+                  <option>Кредиты</option>
+                  <option>Другое</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row-1">
+              <label class="form-label">Дата</label>
+              <input class="form-input" id="tx-date" type="date" style="width:200px">
+            </div>
+            <div class="toggle-row" onclick="toggleHidden()">
+              <div class="toggle-track" id="hidden-track"><div class="toggle-thumb"></div></div>
+              <div>
+                <div class="toggle-label">Скрытая трата</div>
+                <div style="font-size:11px;color:var(--text2)">Только вы увидите детали</div>
+              </div>
+              <span class="toggle-sub" id="hidden-status">Выкл</span>
+            </div>
+            <div class="hint-box" id="hidden-hint">
+              🔒 Другие участники увидят только «Личная трата» без суммы и названия.
+            </div>
+            <button class="btn-primary" onclick="addTransaction(this)" style="margin-top:4px">Сохранить операцию</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS -->
+      <div class="page" id="page-transactions">
+        <div class="page-header">
+          <div class="page-title">Транзакции</div>
+          <div class="page-sub">История всех операций семьи</div>
+        </div>
+        <div class="filter-bar" id="tx-member-filter"></div>
+        <div class="card" id="tx-list-card"></div>
+      </div>
+
+      <!-- REPORT -->
+      <div class="page" id="page-report">
+        <div class="page-header">
+          <div class="page-title">Отчёт</div>
+          <div class="page-sub">Анализ доходов и расходов за период</div>
+        </div>
+        <div class="period-tabs">
+          <button class="ptab active" onclick="switchPeriod('month',this)">За месяц</button>
+          <button class="ptab" onclick="switchPeriod('custom',this)">Свой период</button>
+        </div>
+        <div id="rep-month-sel" style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px">
+          <div>
+            <label class="form-label">Месяц</label>
+            <input class="form-input" id="rep-month" type="month" style="width:180px" onchange="loadReport()">
+          </div>
+        </div>
+        <div id="rep-custom-sel" style="display:none;margin-bottom:16px">
+          <div class="form-row-2" style="max-width:400px">
+            <div><label class="form-label">С</label><input class="form-input" id="rep-from" type="date" onchange="loadReport()"></div>
+            <div><label class="form-label">По</label><input class="form-input" id="rep-to" type="date" onchange="loadReport()"></div>
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <div class="form-label" style="margin-bottom:8px">Участник</div>
+          <div class="filter-bar" id="rep-member-filter"></div>
+        </div>
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card"><div class="stat-label">Доходы</div><div class="stat-value income" id="rep-income">₽0</div></div>
+          <div class="stat-card"><div class="stat-label">Расходы</div><div class="stat-value expense" id="rep-expense">₽0</div></div>
+          <div class="stat-card"><div class="stat-label">Остаток</div><div class="stat-value" id="rep-balance">₽0</div></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">Расходы по категориям</div></div>
+          <div style="padding:16px 18px" id="rep-cats"></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">По участникам</div></div>
+          <div style="padding:16px 18px" id="rep-members-stats"></div>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn-primary" style="max-width:280px" onclick="printReport()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;display:inline;vertical-align:-2px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать отчёт (PDF)
+          </button>
+          <button id="excel-export-btn" class="btn-primary" style="max-width:280px; background: var(--accent);" onclick="exportToExcel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;display:inline;vertical-align:-2px;margin-right:6px">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Скачать отчёт (Excel)
+          </button>
+        </div>
+      </div>
+
+      <!-- MEMBERS -->
+      <div class="page" id="page-members">
+        <div class="page-header">
+          <div class="page-title">Участники семьи</div>
+          <div class="page-sub">Управление ролями и доступом</div>
+        </div>
+        <div class="members-grid" id="members-grid"></div>
+        <div class="invite-box" id="invite-box" style="display:none">
+          <div>
+            <div class="invite-code" id="invite-code-text"></div>
+            <div class="invite-desc">Отправьте этот код члену семьи</div>
+          </div>
+          <button class="copy-btn" onclick="copyCode()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:-1px;margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Скопировать
+          </button>
+        </div>
+        <div style="margin-top:12px" id="leave-btn-wrap">
+          <button class="btn-danger-sm" onclick="leaveFamily()">Покинуть семью</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- PRINT STYLES -->
+<style id="print-style">
+@media print {
+  .sidebar, .nav-item, button, .filter-bar, .period-tabs, #rep-month-sel, #rep-custom-sel { display: none !important; }
+  body { background: #fff; }
+  .main-content { padding: 0; }
+  .page { display: block !important; }
+  #page-dashboard, #page-transactions, #page-add, #page-members { display: none !important; }
+  #page-report { display: block !important; }
+}
+</style>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+let members = [];
+let selectedMemberId = null;
+let hiddenOn = false;
+let repPeriod = 'month';
+let repMemberId = null;
+
+const COLORS = ['#eaf3e8','#e8f4fd','#fce8e6','#f3eefe','#fef3e2','#fde8f0','#e8fef6','#f0ede8'];
+const TEXT_COLORS = ['#2d5a27','#0c447c','#c0392b','#4a3d8f','#a0620a','#993556','#085041','#444441'];
+
+function av(name) {
+  return (name || '?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+}
+function avColor(i) {
+  return { bg: COLORS[i % COLORS.length], fg: TEXT_COLORS[i % TEXT_COLORS.length] };
+}
+function rub(n) {
+  if (n == null) return '—';
+  return '₽' + Number(n).toLocaleString('ru-RU', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function catIcon(cat) {
+  const map = {'Питание':'🍔','ЖКХ':'🏠','Транспорт':'🚗','Развлечения':'🎮','Здоровье':'💊','Одежда':'👕','Образование':'📚','Кредиты':'💳','Другое':'📦','Доход':'💼'};
+  return map[cat] || '📦';
+}
+function catClass(cat) {
+  const map = {'Питание':'cat-food','ЖКХ':'cat-home','Транспорт':'cat-car','Развлечения':'cat-fun','Здоровье':'cat-health','Одежда':'cat-clothes'};
+  return map[cat] || 'cat-other';
+}
+
+// ── Роли с возможностью ввода своей ────────────────────────────────────────
+function setupRoleSelectors() {
+  const createSelect = document.getElementById('fam-role-create');
+  const createCustom = document.getElementById('fam-role-create-custom');
+  if (createSelect) {
+    createSelect.addEventListener('change', function() {
+      if (this.value === '__custom__') {
+        createCustom.style.display = 'block';
+      } else {
+        createCustom.style.display = 'none';
+        createCustom.value = '';
+      }
+    });
+  }
+  
+  const joinSelect = document.getElementById('fam-role-join');
+  const joinCustom = document.getElementById('fam-role-join-custom');
+  if (joinSelect) {
+    joinSelect.addEventListener('change', function() {
+      if (this.value === '__custom__') {
+        joinCustom.style.display = 'block';
+      } else {
+        joinCustom.style.display = 'none';
+        joinCustom.value = '';
+      }
+    });
+  }
+}
+
+function getRoleValue(isCreate) {
+  const select = document.getElementById(isCreate ? 'fam-role-create' : 'fam-role-join');
+  const customInput = document.getElementById(isCreate ? 'fam-role-create-custom' : 'fam-role-join-custom');
+  
+  if (select.value === '__custom__') {
+    return customInput.value.trim();
+  }
+  return select.value;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type==='error' ? ' error' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = '', 2800);
+}
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'}, credentials: 'include' };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function switchAuth(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register')));
+  document.getElementById('login-form').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass = document.getElementById('l-pass').value;
+  const err = document.getElementById('auth-error');
+  err.style.display = 'none';
+  const r = await api('POST', '/api/login', {email, password: pass});
+  if (r.error) { err.textContent = r.error; err.style.display = 'block'; return; }
+  currentUser = r.user;
+  afterAuth();
+}
+
+async function doRegister() {
+  const name = document.getElementById('r-name').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const pass = document.getElementById('r-pass').value;
+  const err = document.getElementById('auth-error');
+  err.style.display = 'none';
+  const r = await api('POST', '/api/register', {name, email, password: pass});
+  if (r.error) { err.textContent = r.error; err.style.display = 'block'; return; }
+  currentUser = r.user;
+  afterAuth();
+}
+
+async function doLogout() {
+  await api('POST', '/api/logout');
+  currentUser = null;
+  showScreen('auth');
+}
+
+function afterAuth() {
+  if (!currentUser.family_id) {
+    document.getElementById('setup-name').textContent = currentUser.name;
+    showScreen('setup');
+  } else {
+    initApp();
+    showScreen('app');
+  }
+}
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+function switchSetup(tab) {
+  document.querySelectorAll('.setup-tab').forEach((t,i) => t.classList.toggle('active', (i===0 && tab==='create') || (i===1 && tab==='join')));
+  document.getElementById('panel-create').classList.toggle('active', tab==='create');
+  document.getElementById('panel-join').classList.toggle('active', tab==='join');
+  document.getElementById('setup-error').style.display = 'none';
+}
+
+async function doCreateFamily() {
+  const name = document.getElementById('fam-name').value.trim();
+  const role_label = getRoleValue(true);
+  const err = document.getElementById('setup-error');
+  err.style.display = 'none';
+  if (!role_label) {
+    err.textContent = 'Укажите свою роль';
+    err.style.display = 'block';
+    return;
+  }
+  const r = await api('POST', '/api/family/create', {name, role_label});
+  if (r.error) { err.textContent = r.error; err.style.display = 'block'; return; }
+  currentUser.family_id = r.family.id;
+  currentUser.is_creator = true;
+  currentUser.role_label = role_label;
+  currentUser.family = r.family;
+  initApp(); showScreen('app');
+}
+
+async function doJoinFamily() {
+  const code = document.getElementById('join-code').value.trim();
+  const role_label = getRoleValue(false);
+  const err = document.getElementById('setup-error');
+  err.style.display = 'none';
+  if (!role_label) {
+    err.textContent = 'Укажите свою роль';
+    err.style.display = 'block';
+    return;
+  }
+  const r = await api('POST', '/api/family/join', {code, role_label});
+  if (r.error) { err.textContent = r.error; err.style.display = 'block'; return; }
+  currentUser.family_id = r.family.id;
+  currentUser.family = r.family;
+  currentUser.role_label = role_label;
+  initApp(); showScreen('app');
+}
+
+// ── Screens ────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.getElementById('auth-screen').style.display = name==='auth' ? 'flex' : 'none';
+  document.getElementById('setup-screen').style.display = name==='setup' ? 'flex' : 'none';
+  document.getElementById('app-screen').style.display = name==='app' ? 'block' : 'none';
+}
+
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === name));
+  document.getElementById('page-'+name).classList.add('active');
+  if (name==='dashboard') loadDashboard();
+  if (name==='transactions') loadTransactions();
+  if (name==='report') loadReportPage();
+  if (name==='members') loadMembers();
+  if (name==='add') setupAddForm();
+}
+
+// ── App init ───────────────────────────────────────────────────────────────
+async function initApp() {
+  document.getElementById('sb-family-name').textContent = currentUser.family?.name || '';
+  document.getElementById('sb-name').textContent = currentUser.name;
+  document.getElementById('sb-role').textContent = currentUser.role_label || (currentUser.is_creator ? 'Создатель' : 'Участник');
+  const avEl = document.getElementById('sb-av');
+  avEl.textContent = av(currentUser.name);
+
+  document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+
+  const now = new Date();
+  document.getElementById('rep-month').value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const y = now.getFullYear(), m = now.getMonth();
+  document.getElementById('rep-from').value = new Date(y,m,1).toISOString().split('T')[0];
+  document.getElementById('rep-to').value = new Date(y,m+1,0).toISOString().split('T')[0];
+
+  members = await api('GET', '/api/family/members');
+  loadDashboard();
+  
+  // Скрываем кнопку Excel для обычных пользователей
+  if (currentUser && !currentUser.is_creator) {
+    const excelBtn = document.getElementById('excel-export-btn');
+    if (excelBtn) excelBtn.style.display = 'none';
+  }
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const from = new Date(y,m,1).toISOString().split('T')[0];
+  const to = new Date(y,m+1,0).toISOString().split('T')[0];
+  document.getElementById('dash-period').textContent = now.toLocaleString('ru-RU',{month:'long',year:'numeric'});
+
+  const txs = await api('GET', `/api/transactions?from=${from}&to=${to}`);
+  let income=0, expense=0;
+  txs.forEach(t => {
+    if (t.type==='income') income += t.amount||0;
+    else if (!t.masked) expense += t.amount||0;
+  });
+  document.getElementById('d-income').textContent = rub(income);
+  document.getElementById('d-expense').textContent = rub(expense);
+  const bal = income - expense;
+  const balEl = document.getElementById('d-balance');
+  balEl.textContent = rub(bal);
+  balEl.style.color = bal >= 0 ? 'var(--accent)' : 'var(--red)';
+
+  const list = document.getElementById('dash-tx-list');
+  const recent = txs.slice(0,8);
+  if (!recent.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">Операций пока нет.<br>Добавьте первую!</div></div>';
+  } else {
+    list.innerHTML = recent.map(t => txRow(t, true)).join('');
+  }
+}
+
+// ── Transactions ───────────────────────────────────────────────────────────
+let txFilterMember = null;
+async function loadTransactions() {
+  let url = '/api/transactions';
+  if (txFilterMember) url += '?member_id=' + txFilterMember;
+  const txs = await api('GET', url);
+
+  const fb = document.getElementById('tx-member-filter');
+  fb.innerHTML = `<div class="filter-chip ${!txFilterMember?'active':''}" onclick="setTxFilter(null)">Все</div>`;
+  members.forEach(m => {
+    fb.innerHTML += `<div class="filter-chip ${txFilterMember==m.id?'active':''}" onclick="setTxFilter(${m.id})">${m.name}</div>`;
+  });
+
+  const list = document.getElementById('tx-list-card');
+  if (!txs.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Операций нет</div></div>';
+  } else {
+    list.innerHTML = txs.map(t => txRow(t, false)).join('');
+  }
+}
+function setTxFilter(id) { txFilterMember = id; loadTransactions(); }
+
+function txRow(t, hideDelete) {
+  const masked = t.masked;
+  const isIncome = t.type === 'income';
+  const amtStr = masked ? '₽ ···' : (isIncome ? '+'+rub(t.amount) : '–'+rub(t.amount));
+  const amtClass = masked ? 'masked' : (isIncome ? 'pos' : '');
+  const role = t.role_label ? `<span class="badge badge-role">${t.role_label}</span> ` : '';
+  const hiddenBadge = t.is_hidden && !masked ? ' <span class="badge badge-hidden">скрыто</span>' : '';
+  const delBtn = hideDelete ? '' : `<button class="tx-del" onclick="deleteTx(${t.id})" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`;
+  return `<div class="tx-row" style="${masked?'opacity:.6':''}">
+    <div class="tx-ico ${catClass(t.category)}">${masked ? '🔒' : catIcon(t.category)}</div>
+    <div class="tx-info">
+      <div class="tx-name">${t.title}${hiddenBadge}</div>
+      <div class="tx-meta">${t.user_name} · ${role}${t.date}</div>
+    </div>
+    <div class="tx-amount ${amtClass}">${amtStr}</div>
+    ${delBtn}
+  </div>`;
+}
+
+async function deleteTx(id) {
+  if (!confirm('Удалить операцию?')) return;
+  const r = await api('DELETE', '/api/transactions/'+id);
+  if (r.error) { toast(r.error, 'error'); return; }
+  toast('Операция удалена');
+  loadTransactions();
+}
+
+// ── Add transaction ────────────────────────────────────────────────────────
+function setupAddForm() {
+  selectedMemberId = currentUser.id;
+  hiddenOn = false;
+  document.getElementById('hidden-track').classList.remove('on');
+  document.getElementById('hidden-status').textContent = 'Выкл';
+  document.getElementById('hidden-hint').classList.remove('show');
+
+  const wrap = document.getElementById('member-selector-wrap');
+  const chips = document.getElementById('member-chips');
+  if (currentUser.is_creator && members.length > 1) {
+    wrap.style.display = 'block';
+    chips.innerHTML = members.map(m => `<div class="mchip ${m.id==currentUser.id?'sel':''}" onclick="selMember(this,${m.id})">${m.name}${m.role_label?' · '+m.role_label:''}</div>`).join('');
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function selMember(el, id) {
+  document.querySelectorAll('#member-chips .mchip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedMemberId = id;
+}
+
+function toggleHidden() {
+  hiddenOn = !hiddenOn;
+  document.getElementById('hidden-track').classList.toggle('on', hiddenOn);
+  document.getElementById('hidden-status').textContent = hiddenOn ? 'Вкл' : 'Выкл';
+  document.getElementById('hidden-hint').classList.toggle('show', hiddenOn);
+}
+
+async function addTransaction(btn) {
+  const title = document.getElementById('tx-title').value.trim();
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  const type = document.getElementById('tx-type').value;
+  const category = document.getElementById('tx-category').value;
+  const date = document.getElementById('tx-date').value;
+  if (!title || !amount || !date) { toast('Заполните все поля', 'error'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Сохраняю...';
+  const r = await api('POST', '/api/transactions', {
+    title, amount, type, category, date,
+    is_hidden: hiddenOn,
+    user_id: selectedMemberId || currentUser.id
+  });
+  btn.disabled = false;
+  btn.textContent = 'Сохранить операцию';
+  if (r.error) { toast(r.error, 'error'); return; }
+  toast('Операция добавлена!');
+  document.getElementById('tx-title').value = '';
+  document.getElementById('tx-amount').value = '';
+  members = await api('GET', '/api/family/members');
+}
+
+// ── Report ─────────────────────────────────────────────────────────────────
+function switchPeriod(type, el) {
+  repPeriod = type;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('rep-month-sel').style.display = type==='month' ? 'flex' : 'none';
+  document.getElementById('rep-custom-sel').style.display = type==='custom' ? 'block' : 'none';
+  loadReport();
+}
+
+async function loadReportPage() {
+  const fb = document.getElementById('rep-member-filter');
+  fb.innerHTML = `<div class="filter-chip ${!repMemberId?'active':''}" onclick="setRepMember(null,this)">Все</div>`;
+  members.forEach(m => {
+    fb.innerHTML += `<div class="filter-chip ${repMemberId==m.id?'active':''}" onclick="setRepMember(${m.id},this)">${m.name}</div>`;
+  });
+  loadReport();
+}
+
+function setRepMember(id, el) {
+  repMemberId = id;
+  document.querySelectorAll('#rep-member-filter .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  loadReport();
+}
+
+async function loadReport() {
+  let from, to;
+  if (repPeriod === 'month') {
+    const val = document.getElementById('rep-month').value;
+    if (!val) return;
+    const [y,m] = val.split('-').map(Number);
+    from = new Date(y,m-1,1).toISOString().split('T')[0];
+    to = new Date(y,m,0).toISOString().split('T')[0];
+  } else {
+    from = document.getElementById('rep-from').value;
+    to = document.getElementById('rep-to').value;
+    if (!from || !to) return;
+  }
+  let url = `/api/report?from=${from}&to=${to}`;
+  if (repMemberId) url += '&member_id=' + repMemberId;
+  const d = await api('GET', url);
+  if (d.error) return;
+
+  document.getElementById('rep-income').textContent = rub(d.income);
+  document.getElementById('rep-expense').textContent = rub(d.expense);
+  const balEl = document.getElementById('rep-balance');
+  balEl.textContent = rub(d.balance);
+  balEl.style.color = d.balance >= 0 ? 'var(--accent)' : 'var(--red)';
+
+  const maxCat = Math.max(...(d.categories.map(c=>c.amount)||[1]),1);
+  document.getElementById('rep-cats').innerHTML = d.categories.length
+    ? d.categories.map(c => `
+      <div class="cat-row">
+        <div class="cat-name">${c.name}</div>
+        <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(c.amount/maxCat*100)}%"></div></div>
+        <div class="cat-val">${rub(c.amount)}</div>
+      </div>`).join('')
+    : '<div style="color:var(--text2);font-size:13px">Расходов нет</div>';
+
+  const maxM = Math.max(...(d.members.map(m=>m.expense)||[1]),1);
+  document.getElementById('rep-members-stats').innerHTML = d.members.length
+    ? d.members.map((m,i) => {
+        const c = avColor(i);
+        return `<div class="cat-row">
+          <div style="display:flex;align-items:center;gap:6px;width:110px;flex-shrink:0">
+            <div style="width:22px;height:22px;border-radius:50%;background:${c.bg};color:${c.fg};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0">${av(m.name)}</div>
+            <span style="font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</span>
+          </div>
+          <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.round(m.expense/maxM*100)}%;background:${c.fg}"></div></div>
+          <div class="cat-val">${rub(m.expense)}</div>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--text2);font-size:13px">Данных нет</div>';
+}
+
+function printReport() { window.print(); }
+
+async function exportToExcel() {
+    let from, to;
+    if (repPeriod === 'month') {
+        const val = document.getElementById('rep-month').value;
+        if (!val) return;
+        const [y, m] = val.split('-').map(Number);
+        from = new Date(y, m - 1, 1).toISOString().split('T')[0];
+        to = new Date(y, m, 0).toISOString().split('T')[0];
+    } else {
+        from = document.getElementById('rep-from').value;
+        to = document.getElementById('rep-to').value;
+        if (!from || !to) return;
+    }
+    let url = `/api/report/excel?from=${from}&to=${to}`;
+    if (repMemberId) url += `&member_id=${repMemberId}`;
+    window.location.href = url;
+}
+
+// ── Members ────────────────────────────────────────────────────────────────
+async function loadMembers() {
+  members = await api('GET', '/api/family/members');
+  const grid = document.getElementById('members-grid');
+
+  grid.innerHTML = members.map((m,i) => {
+    const c = avColor(i);
+    const isMe = m.id === currentUser.id;
+    const canEdit = currentUser.is_creator && !isMe;
+    const roleEl = currentUser.is_creator
+      ? `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+           <select class="role-select" id="role-select-${m.id}" onchange="handleRoleChange(${m.id}, this.value)" style="max-width:120px">
+             <option value="">— выберите —</option>
+             <option ${m.role_label==='Муж'?'selected':''}>Муж</option>
+             <option ${m.role_label==='Жена'?'selected':''}>Жена</option>
+             <option ${m.role_label==='Отец'?'selected':''}>Отец</option>
+             <option ${m.role_label==='Мать'?'selected':''}>Мать</option>
+             <option ${m.role_label==='Сын'?'selected':''}>Сын</option>
+             <option ${m.role_label==='Дочь'?'selected':''}>Дочь</option>
+             <option ${m.role_label==='Дедушка'?'selected':''}>Дедушка</option>
+             <option ${m.role_label==='Бабушка'?'selected':''}>Бабушка</option>
+             <option ${m.role_label==='Наблюдатель'?'selected':''}>Наблюдатель</option>
+             <option value="__custom__">✏️ Своя роль...</option>
+           </select>
+           <input type="text" id="role-custom-${m.id}" placeholder="Своя роль" style="display:none; width:100px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; font-size:11px;" onblur="updateRoleCustom(${m.id}, this.value)">
+         </div>`
+      : `<span class="badge badge-role">${m.role_label||'Участник'}</span>`;
+    const actions = canEdit
+      ? `<div class="member-actions"><button class="btn-danger-sm" onclick="removeMember(${m.id},'${m.name}')">Удалить</button></div>`
+      : '';
+    return `
+      <div class="member-card">
+        <div class="member-card-header">
+          <div class="member-av" style="background:${c.bg};color:${c.fg}">${av(m.name)}</div>
+          <div style="flex:1;min-width:0">
+            <div class="member-name">${m.name}${isMe?' (вы)':''} ${m.is_creator?'<span class="badge badge-creator">Создатель</span>':''}</div>
+            <div class="member-role-edit" style="margin-top:5px">${roleEl}</div>
+          </div>
+        </div>
+        <div class="member-stats">
+          <div class="mstat"><strong class="pos">${rub(m.income)}</strong>Доходы</div>
+          <div class="mstat"><strong>${rub(m.expense)}</strong>Расходы</div>
+        </div>
+        ${actions}
+      </div>`;
+  }).join('');
+
+  const ibox = document.getElementById('invite-box');
+  const leaveWrap = document.getElementById('leave-btn-wrap');
+  if (currentUser.family?.invite_code) {
+    ibox.style.display = 'flex';
+    document.getElementById('invite-code-text').textContent = currentUser.family.invite_code;
+  }
+  leaveWrap.style.display = currentUser.is_creator ? 'none' : 'block';
+}
+
+function handleRoleChange(userId, value) {
+  const customInput = document.getElementById(`role-custom-${userId}`);
+  if (value === '__custom__') {
+    customInput.style.display = 'inline-block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+    updateRole(userId, value);
+  }
+}
+
+async function updateRoleCustom(userId, customRole) {
+  if (customRole.trim()) {
+    await updateRole(userId, customRole.trim());
+  }
+  document.getElementById(`role-custom-${userId}`).style.display = 'none';
+  const select = document.getElementById(`role-select-${userId}`);
+  if (select) select.value = '';
+}
+
+async function updateRole(uid, role) {
+  const r = await api('PUT', `/api/family/member/${uid}/role`, {role_label: role});
+  if (r.error) { toast(r.error, 'error'); return; }
+  toast('Роль обновлена');
+  members = await api('GET', '/api/family/members');
+  loadMembers();
+}
+
+async function removeMember(uid, name) {
+  if (!confirm(`Удалить ${name} из семьи?`)) return;
+  const r = await api('DELETE', `/api/family/member/${uid}`);
+  if (r.error) { toast(r.error, 'error'); return; }
+  toast(`${name} удалён из семьи`);
+  members = await api('GET', '/api/family/members');
+  loadMembers();
+}
+
+async function leaveFamily() {
+  if (!confirm('Покинуть семью? Ваша история сохранится.')) return;
+  const r = await api('POST', '/api/family/leave');
+  if (r.error) { toast(r.error, 'error'); return; }
+  currentUser.family_id = null;
+  currentUser.family = null;
+  document.getElementById('setup-name').textContent = currentUser.name;
+  showScreen('setup');
+}
+
+function copyCode() {
+  const code = document.getElementById('invite-code-text').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('Код скопирован!'));
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+(async () => {
+  setupRoleSelectors();
+  const r = await api('GET', '/api/me');
+  if (r.error) { showScreen('auth'); return; }
+  currentUser = r;
+  if (!currentUser.family_id) {
+    document.getElementById('setup-name').textContent = currentUser.name;
+    showScreen('setup');
+  } else {
+    await initApp();
+    showScreen('app');
+  }
+})();
+</script>
+</body>
+</html>
