@@ -703,10 +703,25 @@ function toast(msg, type='ok') {
 
 // ── API ────────────────────────────────────────────────────────────────────
 async function api(method, url, body) {
-  const opts = { method, headers: {'Content-Type':'application/json'}, credentials: 'include' };
+  const opts = { 
+    method, 
+    headers: {'Content-Type':'application/json'}, 
+    credentials: 'include'
+  };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(url, opts);
-  return r.json();
+  
+  // Для Render используем полный URL
+  const baseUrl = window.location.origin;
+  const fullUrl = baseUrl + url;
+  
+  try {
+    const r = await fetch(fullUrl, opts);
+    return await r.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    toast('Ошибка соединения с сервером', 'error');
+    return { error: 'Network error' };
+  }
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
