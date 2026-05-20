@@ -10,6 +10,63 @@ from psycopg2.extras import RealDictCursor
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+def init_db():
+    """Создаёт таблицы, если их нет"""
+    conn = get_db_connection()
+    if not conn:
+        print("❌ Не удалось подключиться к БД для инициализации")
+        return
+    cur = conn.cursor()
+    
+    # Таблица пользователей
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(200) NOT NULL,
+            family_id INTEGER,
+            role_label VARCHAR(100),
+            is_creator BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Таблица семей
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS families (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            invite_code VARCHAR(10) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Таблица транзакций
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS transactions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            family_id INTEGER NOT NULL REFERENCES families(id),
+            title VARCHAR(200) NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
+            category VARCHAR(50),
+            date DATE NOT NULL,
+            is_hidden BOOLEAN DEFAULT FALSE,
+            masked BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("✅ Таблицы созданы/проверены")
+
+# Вызовите функцию ПЕРЕД запуском сервера
+init_db()
+
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, supports_credentials=True)
 
@@ -705,6 +762,8 @@ def get_report_excel():
         as_attachment=True,
         download_name=f'budget_report_{from_date}_to_{to_date}.xlsx'
     )
+
+init_db()
 
 # ------------------- ЗАПУСК -------------------
 if __name__ == '__main__':
